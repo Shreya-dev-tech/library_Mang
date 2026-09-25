@@ -1,168 +1,297 @@
-import colorama
-from colorama import Fore, Back, Style, init
-import datetime 
-from datetime import datetime 
-import os 
+from datetime import datetime
+import os
+import pandas as pd
+import streamlit as st
 
 
-def menu():
-    init(autoreset=True)
-    print(Fore.CYAN + '''╔══════════════════════════════════════════════╗
-║                                              ║
-║        📚  LIBRARY MANAGEMENT SYSTEM  📚     ║
-║                                              ║
-╚══════════════════════════════════════════════╝''')
-    print(Style.BRIGHT+Fore.YELLOW+"""
-     1. Add Book
-     2.View Books
-     3.Search Book
-     4.Register User
-     5.Issue Book
-     6.Exit """)
+def set_light_modern_theme():
+    st.markdown(
+        """
+        <style>
+        /* Main page background */
+        .stApp {
+            background-color: #F8FAFC;
+            color: #1E293B;
+        }
+
+        /* Sidebar light slate */
+        section[data-testid="stSidebar"] {
+            background-color: #EDF2F7 !important;
+            border-right: 1px solid #E2E8F0;
+        }
+        section[data-testid="stSidebar"] * {
+            color: #1E293B !important;
+        }
+
+        /* Headers */
+        h1, h2, h3 {
+            color: #0F172A !important;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            font-weight: 700;
+        }
+
+        /* Input fields */
+        .stTextInput input {
+            background-color: #FFFFFF !important;
+            color: #0F172A !important;
+            border: 1px solid #CBD5E1 !important;
+            border-radius: 6px;
+        }
+
+        /* Action Buttons */
+        .stButton > button {
+            background-color: #2563EB !important;
+            color: #FFFFFF !important;
+            border-radius: 6px;
+            border: none;
+            font-weight: 600;
+        }
+        .stButton > button:hover {
+            background-color: #1D4ED8 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 def read_book():
-     """"This Function is majorly to read contents of the file """
+    """This Function is majorly to read contents of the file"""
+    if not os.path.exists("book_data.txt"):
+        return []
+    with open("book_data.txt", "r") as file:
+        book_data = file.readlines()
+    return book_data
 
-     with open ("book_data.txt" ,"r") as file :
-         book_data=file.readlines()
-     return book_data
+def read_user():
+    """Reads user records from user_data.txt"""
+    if not os.path.exists("user_data.txt"):
+        return []
+    with open("user_data.txt", "r") as file:
+        user_data = file.readlines()
+    return user_data
+
+
+# --- Feature Implementations ---
 
 def add_book():
-    """"This is a function to add a book in Libary Managment System """
-    book_data=read_book()
-    print(Fore.GREEN + "--- ADD BOOK ---")
-    book_name = input("Enter Book Name : ").strip().title()
-    for i in book_data :
-        if book_name in i :
-            print(Fore.RED+ "The Book Already Exists")
-            print(Fore.RED + "Terminating The Function .... \n please Update Function ")
-            return None 
-    book_id = len(book_data) + 1
+    st.subheader("📚 Add Book")
+    book_data = read_book()
 
-    # while True :
-    #     book_id=input("Enter Book ID : ").strip()
-    #     if book_id .isdigit():
-    #         book_id=int(book_id)
-    #         break
-    #     else:
-    #         print(Fore.RED + "INVAILD Book ID \n Enter Only Numbers ")
-    
-    book_author=input("Enter a author's name : ").strip().title()
-    print(Fore.GREEN + "Book ID --" , book_id)
+    with st.form("add_book_form", clear_on_submit=True):
+        book_name = st.text_input("Enter Book Name:").strip().title()
+        book_author = st.text_input("Enter Author's Name:").strip().title()
+        book_quantity = st.text_input("Enter Quantity of Book:").strip()
+        
+        submitted = st.form_submit_button("Add Book")
 
-    error_message=Fore.RED + "INVALID quantity entered \n Pls Try Again "
-    while True:
-        book_qauntity =input("Enter Qauntity Of Book : ").strip()
-        if book_qauntity .isdigit():
-            if int(book_qauntity) > 0 :
-                book_qauntity = int(book_qauntity)
-                break
-            else:
-                print(error_message)
-        else:
-            print(error_message)
-    print(Fore.GREEN + f'{"Book Added Successfully ":^100}')
-    with open("book_data.txt" ,"a") as file :
-        file.write(f"{book_id},{book_name},{book_author},{book_qauntity} \n")
+        if submitted:
+            if not book_name or not book_author or not book_quantity:
+                st.error("Please fill in all fields.")
+                return
 
-def user():
-    with open ("user_data.txt" ,"r") as file :
-             user_data=file.readlines()
-    return user_data
-    
-user_data = user()
+            # Check if book already exists
+            for line in book_data:
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) >= 2 and book_name.lower() == parts[1].lower():
+                    st.error("The Book Already Exists. Please update quantity or check the name.")
+                    return
+
+            if not book_quantity.isdigit() or int(book_quantity) <= 0:
+                st.error("INVALID quantity entered. Please enter a positive number.")
+                return
+
+            book_id = len(book_data) + 1
+            with open("book_data.txt", "a") as file:
+                file.write(f"{book_id},{book_name},{book_author},{book_quantity}\n")
+
+            st.success(f"Book '{book_name}' (ID: {book_id}) Added Successfully!")
+
 
 def view_book():
-    book_data=read_book()
-    print(Fore.GREEN + "--- VIEW BOOK ---")
-    if len(book_data) ==  0 :
-        print(Fore.RED + "There is no Book in Database to View ")
-    else:
-        for i in book_data :
-            i = i.replace("\n", "")
-            i = i.split(",")
-            print(Fore.CYAN + f"Book ID : {i[0]} | Book Name : {i[1]} | Book Author : {i[2]} | Book Qauntity : {i[-1] }")
-
-def search_book(var):
-    print(Fore.GREEN + "--- SEARCH BOOK ---")
-    book_data= read_book()
-    if len(book_data) == 0 :
-        print(Fore.RED + "There is no Book in Database to Search ")
-    else :
-        for i in book_data :
-             i = i.replace("\n", "")
-             i = i.split(",")
-             if var.isdigit() :
-                 if i[0].strip()== var.strip():
-                     print("\n")
-                     print(Fore.CYAN + f"Book ID : {i[0]} | Book Name : {i[1]} | Book Author : {i[2]} | Book Qauntity : {i[-1] }")
-                     return i 
-             else:
-                    if i[1].strip().lower() ==  var.strip().lower() :
-                        print("\n")
-                        print(Fore.CYAN + f"Book ID : {i[0]} | Book Name : {i[1]} | Book Author : {i[2]} | Book Qauntity : {i[-1] }")
-                        return i
-                    
-def issue_book():
-    print(Fore.GREEN + "--- ISSUE BOOK ---")
-    user_data = user()
+    st.subheader("📖 View Books")
     book_data = read_book()
-    user_id = input("Enter User Id : ")
-    for i in user_data :
-        i = i.replace("\n", "")
-        i = i.split(",")
-        if user_id.isdigit() :
-            if i[0].strip()== user_id.strip():
-                print(Fore.YELLOW + "User Id Accepted ")
-        else:
-            print(Fore.RED + "Error Try Again")
-    var=input("Enter Book ID or Book Name : ")
-    book_details = search_book(var)
-    quantity = input("Enter Qauntity : ")
-    if quantity in book_data :
-         i = i.replace("\n", "")
-         i = i.split(",")
-         quantity = i[-1] - quantity 
-         
-    print(Fore.GREEN + f"For the User {user_id} book {book_details[1]} has been issued on {datetime.now().strftime("%d-%m-%Y")}")
+
+    if not book_data:
+        st.warning("There is no Book in Database to View.")
+        return
+
+    records = []
+    for line in book_data:
+        parts = [p.strip() for p in line.replace("\n", "").split(",")]
+        if len(parts) >= 4:
+            records.append({
+                "Book ID": parts[0],
+                "Book Name": parts[1],
+                "Book Author": parts[2],
+                "Quantity": parts[3]
+            })
+
+    st.dataframe(pd.DataFrame(records), use_container_width=True)
+
+
+def search_book_ui():
+    st.subheader("🔍 Search Book")
+    var = st.text_input("Enter Book ID or Book Name:").strip()
+
+    if st.button("Search"):
+        if not var:
+            st.warning("Please enter a search query.")
+            return
+
+        book_data = read_book()
+        if not book_data:
+            st.warning("There is no Book in Database to Search.")
+            return
+
+        found = False
+        for line in book_data:
+            parts = [p.strip() for p in line.replace("\n", "").split(",")]
+            if len(parts) >= 4:
+                match_id = var.isdigit() and parts[0] == var
+                match_name = parts[1].lower() == var.lower()
+
+                if match_id or match_name:
+                    st.success("Book Found!")
+                    st.markdown(
+                        f"**Book ID:** {parts[0]} &nbsp;|&nbsp; "
+                        f"**Book Name:** {parts[1]} &nbsp;|&nbsp; "
+                        f"**Book Author:** {parts[2]} &nbsp;|&nbsp; "
+                        f"**Quantity:** {parts[3]}"
+                    )
+                    found = True
+                    break
+
+        if not found:
+            st.error("No matching book found.")
 
 
 def register_user():
-    print(Fore.GREEN + "--- REGISTER USER ---")
+    st.subheader("👤 Register User")
+    user_data = read_user()
     user_id = len(user_data) + 1
-    print("User ID : " ,user_id)
-    user_name=input("Enter User Name : ").strip().title()
-    number=input("Enter a Mobile Number : ")
-    if len(number) !=10 :
-        print(Fore.RED + "Invalid Format ")
-    else:
-        print(Fore.GREEN + "USER REGISTERED SUCCESSFULLY ")
-    with open("user_data.txt" , "a") as file :
-       file.write(f"{user_id} , {user_name} , {number}\n")
-       #user_id.append(f"{user_id} , {user_name} , {number}\n")
+    st.info(f"Assigning User ID: **{user_id}**")
 
-def exit():
-    print(Fore.GREEN + "--- EXIT ---")
-    print(Fore.GREEN+ "THANK YOU for using our LIBRARY System !!")
+    with st.form("register_user_form", clear_on_submit=True):
+        user_name = st.text_input("Enter User Name:").strip().title()
+        number = st.text_input("Enter Mobile Number (10 digits):").strip()
+        submitted = st.form_submit_button("Register User")
+
+        if submitted:
+            if not user_name:
+                st.error("User name cannot be empty.")
+            elif len(number) != 10 or not number.isdigit():
+                st.error("Invalid Mobile Number! It must be exactly 10 digits.")
+            else:
+                with open("user_data.txt", "a") as file:
+                    file.write(f"{user_id},{user_name},{number}\n")
+                st.success(f"USER REGISTERED SUCCESSFULLY! (ID: {user_id}, Name: {user_name})")
 
 
+def issue_book():
+    st.subheader("📤 Issue Book")
+    user_id=st.text_input("Enter User ID or Name:").strip()
+    book_query = st.text_input("Enter Book ID or Book Name:").strip()
+    issue_qty = st.text_input("Enter Quantity to Issue:").strip()
 
-while True :
-    menu()
-    choice = input("Enter Your Choice between 1 to 6 : ")
-    if choice == "1" :
+    if st.button("Issue Book"):
+        if not user_id or not book_query or not issue_qty:
+            st.error("Please fill in all fields.")
+            return
+
+        # 1. Validate User
+        user_data = read_user()
+        valid_user = False
+        for line in user_data:
+               parts = [p.strip() for p in line.replace("\n", "").split(",")]
+               if len(parts) >= 2:
+                   file_user_id=parts[0]
+                   file_user_name=parts[1]
+                   is_id_match= user_id.isdigit() and file_user_id == user_id
+                   is_name_match= file_user_name.lower() == user_id.lower()
+                   if is_id_match or is_name_match:
+                       valid_user = True
+                       break
+        if not valid_user:
+            st.error("User ID not found. Please register first.")
+            return
+
+        # 2. Validate Book
+        book_data = read_book()
+        target_idx = None
+        book_parts = None
+
+        for idx, line in enumerate(book_data):
+            parts = [p.strip() for p in line.replace("\n", "").split(",")]
+            if len(parts) >= 4:
+                match_id = book_query.isdigit() and parts[0] == book_query
+                match_name = parts[1].lower() == book_query.lower()
+                if match_id or match_name:
+                    target_idx = idx
+                    book_parts = parts
+                    break
+
+        if target_idx is None:
+            st.error("Book not found in library.")
+            return
+
+        # 3. Validate Quantity
+        if not issue_qty.isdigit() or int(issue_qty) <= 0:
+            st.error("Invalid quantity. Must be a positive integer.")
+            return
+
+        issue_qty = int(issue_qty)
+        current_qty = int(book_parts[3])
+
+        if issue_qty > current_qty:
+            st.error(f"Cannot issue {issue_qty} books. Only {current_qty} available in stock.")
+            return
+
+        # 4. Update file inventory
+        book_parts[3] = str(current_qty - issue_qty)
+        book_data[target_idx] = f"{book_parts[0]},{book_parts[1]},{book_parts[2]},{book_parts[3]}\n"
+
+        with open("book_data.txt", "w") as file:
+            file.writelines(book_data)
+
+        issue_date = datetime.now().strftime("%d-%m-%Y")
+        st.success(f"For User **{user_id}**, book **{book_parts[1]}** (x{issue_qty}) has been issued on **{issue_date}**.")
+
+
+# --- Main App Layout ---
+
+def main():
+    st.set_page_config(page_title="Library Management System", 
+                       page_icon="📚", 
+                       layout="centered")
+
+    st.title("📚 Library Management System")
+    st.markdown("---")
+
+    menu_choice = st.sidebar.radio(
+        "Navigation Menu",
+        options=[
+            "1. Add Book",
+            "2. View Books",
+            "3. Search Book",
+            "4. Register User",
+            "5. Issue Book",
+            "6. Exit"
+        ]
+    )
+
+    if menu_choice == "1. Add Book":
         add_book()
-    elif choice == "2":
+    elif menu_choice == "2. View Books":
         view_book()
-    elif choice == "3":
-        var=input("Enter Book Name or Book ID  : ")
-        search_book(var)
-    elif choice == "4":
+    elif menu_choice == "3. Search Book":
+        search_book_ui()
+    elif menu_choice == "4. Register User":
         register_user()
-    elif choice == "5":
+    elif menu_choice == "5. Issue Book":
         issue_book()
-    elif choice == "6":
-        exit()
-        break
-    else :
-        print(Fore.RED+ "Invalid Choice , Enter Again ")
+    elif menu_choice == "6. Exit":
+        st.success("THANK YOU for using our Library System! You can close this tab.")
+
+if __name__ == "__main__":
+    main()
